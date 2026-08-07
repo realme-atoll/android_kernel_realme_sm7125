@@ -13563,8 +13563,18 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
+#ifdef VENDOR_EDIT
+		/* Use OPLUS gauge FCC as CHARGE_FULL (current full charge capacity) */
+		if (g_oplus_chip) {
+			val->intval = g_oplus_chip->batt_fcc * 1000;
+		} else {
+			rc = smblib_get_prop_from_bms(chg,
+					POWER_SUPPLY_PROP_CHARGE_FULL, val);
+		}
+#else
 		rc = smblib_get_prop_from_bms(chg,
 				POWER_SUPPLY_PROP_CHARGE_FULL, val);
+#endif
 		break;
 
 	case POWER_SUPPLY_PROP_FORCE_RECHARGE:
@@ -13588,7 +13598,8 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		break;
 	case POWER_SUPPLY_PROP_CHARGE_FULL_DESIGN:
 		if (g_oplus_chip) {
-			val->intval = g_oplus_chip->batt_fcc * 1000;
+			/* Use design capacity from DTS (batt_capacity_mah), not current FCC */
+			val->intval = g_oplus_chip->batt_capacity_mah * 1000;
 		}
 		break;
 	case POWER_SUPPLY_PROP_TIME_TO_FULL_NOW:
@@ -17373,6 +17384,7 @@ static void register_oplus_pdsvooc_svid(struct work_struct *work) {
 	const char *pd_phandle = "qcom,oplus-pps-usbpd-detection";
 	struct smb_charger *chg;
 	struct usbpd *pd = NULL;
+
 	if(g_oplus_chip == NULL){
 		return;
 	}
@@ -17386,18 +17398,16 @@ static void register_oplus_pdsvooc_svid(struct work_struct *work) {
 		return;
 	}
 	pd = devm_usbpd_get_by_phandle(chg->dev, pd_phandle);
-	if( pd == NULL){
-		pr_err(" pd NULL ");
+	if (pd == NULL) {
 		return;
 	}
-	pr_err(" pd NULL");
 	if (IS_ERR(pd)) {
-		chg_err("oplus pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
 		rc = PTR_ERR(pd);
 		chg->oplus_pd = NULL;
-		schedule_delayed_work(&chg->regist_pd, msecs_to_jiffies(1000));
+		if (rc == -EPROBE_DEFER) {
+			schedule_delayed_work(&chg->regist_pd, msecs_to_jiffies(1000));
+		}
 	} else {
-		chg_err("oplus pps usbpd phandle failed (%ld)\n", PTR_ERR(pd));
 		chg->oplus_pd = pd;
 		chg->oplus_svid_handler.svid = OPPO_SVID;
 		chg->oplus_svid_handler.vdm_received = NULL;
@@ -17407,8 +17417,9 @@ static void register_oplus_pdsvooc_svid(struct work_struct *work) {
 		rc = usbpd_register_svid(chg->oplus_pd, &chg->oplus_svid_handler);
 		if (rc){
 			chg_err("pps pd registration failed\n");
+		} else {
+			chg_debug("pps pd registration success\n");
 		}
-		chg_err("pps pd registration success\n");
 	}
 }
 static int smb5_probe(struct platform_device *pdev)
