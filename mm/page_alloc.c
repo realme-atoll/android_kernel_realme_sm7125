@@ -4514,8 +4514,6 @@ got_pg:
 	if (!page)
 		warn_alloc(gfp_mask, ac->nodemask,
 				"page allocation failure: order:%u", order);
-	warn_alloc(gfp_mask, ac->nodemask,
-			"page allocation failure: order:%u", order);
 #ifdef OPLUS_FEATURE_HEALTHINFO
 /* Huacai.Zhou@PSW.BSP.Kernel.MM, 2018-07-07, add alloc wait monitor support*/
 #ifdef CONFIG_OPPO_MEM_MONITOR

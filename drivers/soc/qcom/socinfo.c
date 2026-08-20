@@ -1575,8 +1575,17 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 static void  __init soc_info_populate(struct soc_device_attribute *soc_dev_attr)
 {
 	uint32_t soc_version = socinfo_get_version();
+	uint32_t id = socinfo_get_id();
 
-	soc_dev_attr->soc_id   = kasprintf(GFP_KERNEL, "%d", socinfo_get_id());
+	/*
+	 * SM7125-AB (Atoll-AB) has soc_id 443. Userspace components
+	 * (including QTI thermal HAL) only recognize base Atoll (407).
+	 * Expose 407 in sysfs soc_id so userspace works seamlessly.
+	 */
+	if (id == 443)
+		id = 407;
+
+	soc_dev_attr->soc_id   = kasprintf(GFP_KERNEL, "%d", id);
 	soc_dev_attr->family  =  "Snapdragon";
 	soc_dev_attr->machine  = socinfo_get_id_string();
 	soc_dev_attr->revision = kasprintf(GFP_KERNEL, "%u.%u",
