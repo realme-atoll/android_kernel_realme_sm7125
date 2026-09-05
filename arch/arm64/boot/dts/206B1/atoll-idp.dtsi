@@ -178,10 +178,7 @@
 };
 
 &pm6150l_adc_tm {
-	io-channels = <&pm6150l_vadc ADC_AMUX_THM1_PU2>,
-			<&pm6150l_vadc ADC_AMUX_THM2_PU2>,
-			<&pm6150l_vadc ADC_AMUX_THM3_PU2>,
-			<&pm6150l_vadc ADC_GPIO1_PU2>;
+	io-channels = <&pm6150l_vadc ADC_AMUX_THM3_PU2>;
 
 	pa_therm1 {
 		reg = <ADC_AMUX_THM3_PU2>;
@@ -498,6 +495,7 @@
 		compatible = "Goodix-gt9886";
 		reg = <0x5d>;
 		chip-name = "GT9886";
+		status = "disabled";
 
 		/* Interrupt && Irq-gpio */
 		interrupt-parent = <&tlmm>;
@@ -556,6 +554,7 @@
 		compatible = "sec-s6sy771";
 		reg = <0x48>;
 		chip-name = "S6SY771";
+		status = "disabled";
 
 		/* Interrupt && Irq-gpio */
 		interrupt-parent = <&tlmm>;

@@ -759,6 +759,7 @@
 		thermal-sensors = <&bcl_soc>;
 		wake-capable-sensor;
 		tracks-low;
+		status = "disabled";
 
 		trips {
 			soc_trip:soc-trip {

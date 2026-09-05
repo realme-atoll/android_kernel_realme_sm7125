@@ -80,7 +80,9 @@ void dwc3_drd_exit(struct dwc3 *dwc)
 				   &dwc->edev_nb);
 
 	cancel_work_sync(&dwc->drd_work);
-	dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
-	flush_work(&dwc->drd_work);
+	if (dwc->desired_dr_role != DWC3_GCTL_PRTCAP_DEVICE) {
+		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
+		flush_work(&dwc->drd_work);
+	}
 	dwc3_gadget_exit(dwc);
 }
