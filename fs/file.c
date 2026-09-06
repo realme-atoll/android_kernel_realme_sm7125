@@ -23,6 +23,8 @@
 #include <linux/spinlock.h>
 #include <linux/rcupdate.h>
 #include <linux/workqueue.h>
+#include <linux/bitmap.h>
+#include <uapi/linux/close_range.h>
 
 unsigned int sysctl_nr_open __read_mostly = 1024*1024;
 unsigned int sysctl_nr_open_min = BITS_PER_LONG;
@@ -1024,3 +1026,81 @@ int iterate_fd(struct files_struct *files, unsigned n,
 	return res;
 }
 EXPORT_SYMBOL(iterate_fd);
+
+static inline void __range_cloexec(struct files_struct *cur_fds,
+				   unsigned int fd, unsigned int max_fd)
+{
+	struct fdtable *fdt;
+
+	spin_lock(&cur_fds->file_lock);
+	fdt = files_fdtable(cur_fds);
+	if (fd < fdt->max_fds) {
+		max_fd = min(fdt->max_fds - 1, max_fd);
+		bitmap_set(fdt->close_on_exec, fd, max_fd - fd + 1);
+	}
+	spin_unlock(&cur_fds->file_lock);
+}
+
+static inline void __range_close(struct files_struct *cur_fds, unsigned int fd,
+				 unsigned int max_fd)
+{
+	while (fd <= max_fd) {
+		struct file *file;
+		struct fdtable *fdt;
+
+		spin_lock(&cur_fds->file_lock);
+		fdt = files_fdtable(cur_fds);
+		if (fd >= fdt->max_fds) {
+			spin_unlock(&cur_fds->file_lock);
+			break;
+		}
+		file = fdt->fd[fd];
+		if (file) {
+			rcu_assign_pointer(fdt->fd[fd], NULL);
+			__clear_close_on_exec(fd, fdt);
+			__put_unused_fd(cur_fds, fd);
+			spin_unlock(&cur_fds->file_lock);
+			filp_close(file, cur_fds);
+			cond_resched();
+		} else {
+			spin_unlock(&cur_fds->file_lock);
+		}
+		fd++;
+	}
+}
+
+/**
+ * sys_close_range() - Close all file descriptors in a given range.
+ *
+ * @fd:     starting file descriptor to close
+ * @max_fd: last file descriptor to close
+ * @flags:  CLOSE_RANGE flags.
+ *
+ * This closes a range of file descriptors. All file descriptors
+ * from @fd up to and including @max_fd are closed.
+ */
+SYSCALL_DEFINE3(close_range, unsigned int, fd, unsigned int, max_fd,
+		unsigned int, flags)
+{
+	if (flags & ~(CLOSE_RANGE_UNSHARE | CLOSE_RANGE_CLOEXEC))
+		return -EINVAL;
+
+	if (fd > max_fd)
+		return -EINVAL;
+
+	if (flags & CLOSE_RANGE_UNSHARE) {
+		struct files_struct *displaced;
+		int ret = unshare_files(&displaced);
+		if (ret)
+			return ret;
+		if (displaced)
+			put_files_struct(displaced);
+	}
+
+	if (flags & CLOSE_RANGE_CLOEXEC)
+		__range_cloexec(current->files, fd, max_fd);
+	else
+		__range_close(current->files, fd, max_fd);
+
+	return 0;
+}
