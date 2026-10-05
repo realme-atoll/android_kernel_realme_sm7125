@@ -890,6 +890,17 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data)
 	for (i = 0; i < count; i++) {
 		struct drm_display_mode *m;
 
+		/*
+		 * For panels supporting panel mode switch (POMS/AOD), command-mode
+		 * timings (such as 30 Hz AOD) are intended strictly for low-power
+		 * Doze states and must not be exposed to userspace as interactive
+		 * display modes.
+		 */
+		if ((display->panel->panel_mode_switch_enabled ||
+		     display->panel->panel_mode == DSI_OP_VIDEO_MODE) &&
+		    modes[i].panel_mode == DSI_OP_CMD_MODE)
+			continue;
+
 		memset(&drm_mode, 0x0, sizeof(drm_mode));
 		dsi_convert_to_drm_mode(&modes[i], &drm_mode);
 		m = drm_mode_duplicate(connector->dev, &drm_mode);

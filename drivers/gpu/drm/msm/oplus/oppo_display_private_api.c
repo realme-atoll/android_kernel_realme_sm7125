@@ -1983,10 +1983,8 @@ static ssize_t oppo_display_set_dimlayer_hbm(struct device *dev,
 		}
 	}
 
-	if (!(get_oppo_display_power_status() == OPPO_DISPLAY_POWER_DOZE ||
-		get_oppo_display_power_status() == OPPO_DISPLAY_POWER_DOZE_SUSPEND)) {
-		oppo_dimlayer_hbm = value;
-	}
+	oppo_dimlayer_hbm = value;
+	
         pr_err("debug for oppo_display_set_dimlayer_hbm get_oppo_display_power_status = %d\n",
 		get_oppo_display_power_status());
 #ifdef VENDOR_EDIT
