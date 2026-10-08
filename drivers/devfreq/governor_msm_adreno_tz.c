@@ -132,9 +132,39 @@ static DEVICE_ATTR(suspend_time, 0444,
 		suspend_time_show,
 		NULL);
 
+static unsigned int adrenoboost = 0;
+
+static ssize_t adrenoboost_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", adrenoboost);
+}
+
+static ssize_t adrenoboost_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (kstrtouint(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	if (val > 3)
+		val = 3;
+
+	adrenoboost = val;
+	return count;
+}
+
+static DEVICE_ATTR(adrenoboost, 0664,
+		adrenoboost_show,
+		adrenoboost_store);
+
 static const struct device_attribute *adreno_tz_attr_list[] = {
 		&dev_attr_gpu_load,
 		&dev_attr_suspend_time,
+		&dev_attr_adrenoboost,
 		NULL
 };
 
@@ -376,6 +406,20 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 	if (level < 0) {
 		pr_err(TAG "bad freq %ld\n", stats.current_frequency);
 		return level;
+	}
+
+	if (adrenoboost > 0) {
+		switch (adrenoboost) {
+		case 1:
+			priv->bin.busy_time += priv->bin.busy_time / 2;
+			break;
+		case 2:
+			priv->bin.busy_time += priv->bin.busy_time;
+			break;
+		case 3:
+			priv->bin.busy_time += priv->bin.busy_time * 2;
+			break;
+		}
 	}
 
 	/*
