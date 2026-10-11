@@ -673,6 +673,25 @@ static ssize_t oplus_display_set_cabc(struct device *dev,
 }
 #endif/*OPLUS_FEATURE_LCD_CABC*/
 
+extern int oppo_skip_pcc_override;
+
+static ssize_t oppo_display_get_skip_pcc_override(struct device *dev,
+	struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", oppo_skip_pcc_override);
+}
+
+static ssize_t oppo_display_set_skip_pcc_override(struct device *dev,
+	struct device_attribute *attr,
+	const char *buf, size_t count)
+{
+	int val = 0;
+	if (sscanf(buf, "%d", &val) == 1) {
+		oppo_skip_pcc_override = val;
+	}
+	return count;
+}
+
 static ssize_t oppo_display_get_hbm(struct device *dev,
 	struct device_attribute *attr, char *buf)
 {
@@ -3334,6 +3353,8 @@ static struct kobject *oppo_display_kobj;
 
 static DEVICE_ATTR(hbm, S_IRUGO | S_IWUSR, oppo_display_get_hbm,
 	oppo_display_set_hbm);
+static DEVICE_ATTR(skip_pcc_override, S_IRUGO | S_IWUSR,
+	oppo_display_get_skip_pcc_override, oppo_display_set_skip_pcc_override);
 static DEVICE_ATTR(audio_ready, S_IRUGO | S_IWUSR, NULL,
 	oppo_display_set_audio_ready);
 static DEVICE_ATTR(seed, S_IRUGO | S_IWUSR, oppo_display_get_seed,
@@ -3410,6 +3431,7 @@ static DEVICE_ATTR(LCM_CABC, S_IRUGO|S_IWUSR, oplus_display_get_cabc, oplus_disp
  */
 static struct attribute *oppo_display_attrs[] = {
 	&dev_attr_hbm.attr,
+	&dev_attr_skip_pcc_override.attr,
 	&dev_attr_audio_ready.attr,
 	&dev_attr_seed.attr,
 	&dev_attr_panel_serial_number.attr,
