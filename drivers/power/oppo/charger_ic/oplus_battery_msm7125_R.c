@@ -11994,7 +11994,7 @@ static void oplus_set_otg_switch_status(bool value)
 
 	if (g_oplus_chip->otg_switch == true)
 		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
-				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, 0);
+				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, EN_TRY_SNK_BIT);
 
 	else
 		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
@@ -14260,7 +14260,7 @@ static int smb5_configure_typec(struct smb_charger *chg)
 #else
 	rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
 			TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK,
-			0);
+			EN_TRY_SNK_BIT);
 #endif
 
 
