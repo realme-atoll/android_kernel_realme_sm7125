@@ -79,10 +79,12 @@ void dwc3_drd_exit(struct dwc3 *dwc)
 	extcon_unregister_notifier(dwc->edev, EXTCON_USB_HOST,
 				   &dwc->edev_nb);
 
-	cancel_work_sync(&dwc->drd_work);
-	if (dwc->desired_dr_role != DWC3_GCTL_PRTCAP_DEVICE) {
-		dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
-		flush_work(&dwc->drd_work);
+	if (dwc->drd_work.func) {
+		cancel_work_sync(&dwc->drd_work);
+		if (dwc->desired_dr_role != DWC3_GCTL_PRTCAP_DEVICE) {
+			dwc3_set_mode(dwc, DWC3_GCTL_PRTCAP_DEVICE);
+			flush_work(&dwc->drd_work);
+		}
 	}
 	dwc3_gadget_exit(dwc);
 }
