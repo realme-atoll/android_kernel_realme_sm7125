@@ -1891,6 +1891,13 @@ void snd_usb_mixer_fu_apply_quirk(struct usb_mixer_interface *mixer,
 		if (strstr(kctl->id.name, "Playback"))
 			cval->min_mute = 1;
 		break;
+	case USB_ID(0x05ac, 0x110a): /* Apple USB-C to 3.5mm Headphone Jack Adapter */
+		if (cval->control == UAC_FU_VOLUME) {
+			int c;
+			for (c = 0; c <= cval->channels; c++)
+				snd_usb_set_cur_mix_value(cval, c, c, cval->max);
+		}
+		break;
 	}
 }
 
