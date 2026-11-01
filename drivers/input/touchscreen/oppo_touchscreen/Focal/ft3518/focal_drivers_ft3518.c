@@ -1131,7 +1131,7 @@ static int fts_power_control(void *chip_data, bool enable)
 
     if (true == enable) {
         fts_rstgpio_set(ts_data->hw_res, false);
-        msleep(1);
+        msleep(10);
         ret = tp_powercontrol_2v8(ts_data->hw_res, true);
         if (ret) {
             return -1;
@@ -1955,6 +1955,16 @@ static int fts_tp_remove(struct i2c_client *client)
     return 0;
 }
 
+static void fts_tp_shutdown(struct i2c_client *client)
+{
+    struct touchpanel_data *ts = i2c_get_clientdata(client);
+
+    TPD_INFO("%s is called\n", __func__);
+    if (ts && ts->ts_ops && ts->ts_ops->power_control) {
+        ts->ts_ops->power_control(ts->chip_data, false);
+    }
+}
+
 static int fts_i2c_suspend(struct device *dev)
 {
     struct touchpanel_data *ts = dev_get_drvdata(dev);
@@ -1995,6 +2005,7 @@ static const struct dev_pm_ops tp_pm_ops = {
 static struct i2c_driver tp_i2c_driver = {
     .probe          = fts_tp_probe,
     .remove         = fts_tp_remove,
+    .shutdown       = fts_tp_shutdown,
     .id_table   = tp_id,
     .driver         = {
         .name   = TPD_DEVICE,

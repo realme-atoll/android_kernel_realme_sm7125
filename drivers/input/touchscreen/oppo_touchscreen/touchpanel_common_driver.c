@@ -15,6 +15,7 @@
 #include <linux/time.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_OPLUS_SYSTEM_SEC_DEBUG
 #include <soc/oplus/system/sec_debug.h>
@@ -73,6 +74,20 @@
 unsigned int tp_debug = 0;
 unsigned int tp_register_times = 0;
 struct touchpanel_data *g_tp = NULL;
+
+static int tp_reboot_notifier_fn(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	if (g_tp && g_tp->ts_ops && g_tp->ts_ops->power_control) {
+		TPD_INFO("%s: power off touch panel on reboot\n", __func__);
+		g_tp->ts_ops->power_control(g_tp->chip_data, false);
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block tp_reboot_nb = {
+	.notifier_call = tp_reboot_notifier_fn,
+};
 static DECLARE_WAIT_QUEUE_HEAD(waiter);
 
 #ifdef CONFIG_TOUCHIRQ_UPDATE_QOS
@@ -6548,6 +6563,9 @@ int register_common_touch_device(struct touchpanel_data *pdata)
         ts->irq = ts->s_client->irq;
     } else {
         ts->irq = ts->client->irq;
+    }
+    if (tp_register_times == 0) {
+        register_reboot_notifier(&tp_reboot_nb);
     }
     tp_register_times++;
     g_tp = ts;
