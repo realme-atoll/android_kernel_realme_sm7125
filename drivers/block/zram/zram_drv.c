@@ -2213,6 +2213,11 @@ static void zram_destroy_comps(struct zram *zram)
 			zram->num_active_comps--;
 		}
 	}
+	for (prio = ZRAM_SECONDARY_COMP; prio < ZRAM_MAX_COMPS; prio++) {
+		kfree(zram->comp_algs[prio]);
+		zram->comp_algs[prio] = NULL;
+	}
+
 }
 
 static void zram_reset_device(struct zram *zram)
