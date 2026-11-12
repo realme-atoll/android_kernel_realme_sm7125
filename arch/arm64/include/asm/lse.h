@@ -17,12 +17,13 @@
 
 #else	/* __ASSEMBLER__ */
 
-#ifdef CONFIG_LTO_CLANG
-#define __LSE_PREAMBLE	".arch armv8-a+lse\n"
-#else
-__asm__(".arch_extension	lse");
-#define __LSE_PREAMBLE
-#endif
+/*
+ * Clang's integrated assembler resets the architecture for each inline asm
+ * block, so emit the extension in the replacement instruction stream itself.
+ * This also covers non-LTO builds where the old file-scope __asm__ was not
+ * enough with recent clang releases.
+ */
+#define __LSE_PREAMBLE		".arch_extension lse\n"
 
 /* Move the ll/sc atomics out-of-line */
 #define __LL_SC_INLINE		notrace

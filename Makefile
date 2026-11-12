@@ -529,10 +529,14 @@ endif
 ifeq ($(cc-name),clang)
 ifneq ($(CROSS_COMPILE),)
 CLANG_TRIPLE	?= $(CROSS_COMPILE)
+endif
+ifneq ($(CLANG_TRIPLE),)
 CLANG_FLAGS	+= --target=$(notdir $(CLANG_TRIPLE:%-=%))
 ifeq ($(shell $(srctree)/scripts/clang-android.sh $(CC) $(CLANG_FLAGS)), y)
 $(error "Clang with Android --target detected. Did you specify CLANG_TRIPLE?")
 endif
+endif
+ifneq ($(CROSS_COMPILE),)
 GCC_TOOLCHAIN_DIR := $(dir $(shell which $(CROSS_COMPILE)elfedit))
 CLANG_FLAGS	+= --prefix=$(GCC_TOOLCHAIN_DIR)$(notdir $(CROSS_COMPILE))
 GCC_TOOLCHAIN	:= $(realpath $(GCC_TOOLCHAIN_DIR)/..)
@@ -540,7 +544,9 @@ endif
 ifneq ($(GCC_TOOLCHAIN),)
 CLANG_FLAGS	+= --gcc-toolchain=$(GCC_TOOLCHAIN)
 endif
+ifneq ($(LLVM_IAS),1)
 CLANG_FLAGS	+= -no-integrated-as
+endif
 CLANG_FLAGS	+= -Werror=unknown-warning-option
 CLANG_FLAGS	+= $(call cc-option, -Wno-misleading-indentation)
 CLANG_FLAGS	+= $(call cc-option, -Wno-bool-operation)
@@ -716,6 +722,17 @@ endif
 LLVM_AR		:= llvm-ar
 LLVM_NM		:= llvm-nm
 export LLVM_AR LLVM_NM
+endif
+
+# Android's PATH tool guard rejects the host binutils names. Map them to the
+# LLVM equivalents that ship with the prebuilt clang when LLVM=1 is requested.
+ifneq ($(LLVM),)
+AR		:= llvm-ar
+NM		:= llvm-nm
+OBJCOPY		:= llvm-objcopy
+OBJDUMP		:= llvm-objdump
+STRIP		:= llvm-strip
+READELF		:= llvm-readelf
 endif
 
 # The arch Makefile can set ARCH_{CPP,A,C}FLAGS to override the default
