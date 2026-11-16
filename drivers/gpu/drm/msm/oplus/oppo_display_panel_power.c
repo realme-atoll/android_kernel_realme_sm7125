@@ -57,15 +57,15 @@ int dsi_panel_parse_panel_power_cfg(struct dsi_panel *panel)
 	u32 *panel_vol = NULL;
 	struct dsi_parser_utils *utils = &panel->utils;
 
-	pr_err("[%s] \n", __func__);
+	pr_debug("[%s] \n", __func__);
 
 	if (!strcmp(panel->type, "primary")) {
 		panel_vol = &panel_vol_bak[PANEL_VOLTAGE_ID_VDDI].voltage_id;
 		rc = utils->read_u32_array(utils->data, "qcom,panel_voltage_vddi",
 					panel_vol, PANEL_VOLTAGE_VALUE_COUNT);
 		if (rc) {
-			pr_err("[%s] failed to parse panel_voltage vddi\n", panel->name);
-			goto error;
+			pr_debug("[%s] panel_voltage vddi not present in DTS, skipping\n", panel->name);
+			return 0;
 		}
 
 		rc = utils->read_string(utils->data, "qcom,panel_voltage_vddi_name",
