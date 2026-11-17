@@ -1711,6 +1711,7 @@ ffs_fs_mount(struct file_system_type *t, int flags,
 	if (IS_ERR(rv) && data.ffs_data) {
 		ffs_release_dev(data.ffs_data);
 		ffs_data_put(data.ffs_data);
+	}
 	return rv;
 }
 
@@ -2090,7 +2091,6 @@ static void ffs_func_eps_disable(struct ffs_function *func)
 {
 	struct ffs_data *ffs;
 	struct ffs_ep *ep;
-        struct ffs_data *ffs      = func->ffs;
 	struct ffs_epfile *epfile;
 	unsigned short count;
 	unsigned long flags;
@@ -3987,7 +3987,7 @@ static void *ffs_acquire_dev(const char *dev_name)
 
 	ffs_dev_unlock();
 
-	return ret;
+	return ffs_dev;
 }
 
 static void ffs_release_dev(struct ffs_data *ffs_data)

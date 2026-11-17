@@ -13557,19 +13557,11 @@ static int smb5_batt_get_prop(struct power_supply *psy,
 		break;
 
 	case POWER_SUPPLY_PROP_CHARGE_FULL:
-#ifdef VENDOR_EDIT
-		/* Use OPLUS gauge FCC as CHARGE_FULL (current full charge capacity) */
 		if (g_oplus_chip) {
 			val->intval = g_oplus_chip->batt_fcc * 1000;
 		} else {
 			rc = smblib_get_prop_from_bms(chg,
 					POWER_SUPPLY_PROP_CHARGE_FULL, val);
-		}
-#else
-		rc = smblib_get_prop_from_bms(chg,
-				POWER_SUPPLY_PROP_CHARGE_FULL, val);
-		if (g_oplus_chip) {
-			val->intval = g_oplus_chip->batt_fcc * 1000;
 		}
 		break;
 
