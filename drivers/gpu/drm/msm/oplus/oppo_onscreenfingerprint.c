@@ -22,6 +22,8 @@
 bool oppo_pcc_enabled = false;
 bool oppo_skip_pcc = false;
 bool oppo_fp_mode = false;
+int oppo_skip_pcc_override = 0;
+EXPORT_SYMBOL(oppo_skip_pcc_override);
 
 struct drm_msm_pcc oppo_save_pcc;
 
@@ -409,7 +411,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-th-brightness", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-th-brightness is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-th-brightness is not defined, rc=%d\n", rc);
 		priv_info->fod_th_brightness = 0;
 
 	} else {
@@ -420,7 +422,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-on-vblank", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-on-vblank is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-on-vblank is not defined, rc=%d\n", rc);
 		priv_info->fod_on_vblank = 0;
 
 	} else {
@@ -431,7 +433,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-off-vblank", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-off-vblank is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-off-vblank is not defined, rc=%d\n", rc);
 		priv_info->fod_off_vblank = 0;
 
 	} else {
@@ -442,7 +444,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-on-delay", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-on-delay is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-on-delay is not defined, rc=%d\n", rc);
 		priv_info->fod_on_delay = 0;
 
 	} else {
@@ -453,7 +455,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-off-delay", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-off-delay is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-off-delay is not defined, rc=%d\n", rc);
 		priv_info->fod_off_delay = 0;
 
 	} else {
@@ -464,7 +466,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-on-vblank_above_th", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-on-vblank_above_th is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-on-vblank_above_th is not defined, rc=%d\n", rc);
 		priv_info->fod_on_vblank_above_th = 0;
 
 	} else {
@@ -475,7 +477,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-off-vblank_above_th", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-off-vblank_above_th is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-off-vblank_above_th is not defined, rc=%d\n", rc);
 		priv_info->fod_off_vblank_above_th = 0;
 
 	} else {
@@ -486,7 +488,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-on-delay_above_th", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-on-delay_above_th is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-on-delay_above_th is not defined, rc=%d\n", rc);
 		priv_info->fod_on_delay_above_th = 0;
 
 	} else {
@@ -497,7 +499,7 @@ int dsi_panel_parse_oppo_mode_config(struct dsi_display_mode *mode,
 	rc = utils->read_u32(utils->data, "oppo,fod-off-delay_above_th", &val);
 
 	if (rc) {
-		DSI_ERR("oppo,fod-off-delay_above_th is not defined, rc=%d\n", rc);
+		DSI_DEBUG("oppo,fod-off-delay_above_th is not defined, rc=%d\n", rc);
 		priv_info->fod_off_delay_above_th = 0;
 
 	} else {
@@ -621,6 +623,10 @@ int sde_crtc_config_fingerprint_dim_layer(struct drm_crtc_state *crtc_state,
 
 bool is_skip_pcc(struct drm_crtc *crtc)
 {
+	if (oppo_skip_pcc_override == 1) {
+		return false;
+	}
+
 	if (OPPO_DISPLAY_POWER_DOZE_SUSPEND == get_oppo_display_power_status() ||
 		OPPO_DISPLAY_POWER_DOZE == get_oppo_display_power_status() ||
 		sde_crtc_get_fingerprint_mode(crtc->state)) {

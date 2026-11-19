@@ -389,11 +389,6 @@ struct sock *cookie_v4_check(struct sock *sk, struct sk_buff *skb)
 
 	/* Try to redo what tcp_v4_send_synack did. */
 	req->rsk_window_clamp = tp->window_clamp ? :dst_metric(&rt->dst, RTAX_WINDOW);
-	/* limit the window selection if the user enforce a smaller rx buffer */
-	full_space = tcp_full_space(sk);
-	if (sk->sk_userlocks & SOCK_RCVBUF_LOCK &&
-	    (req->rsk_window_clamp > full_space || req->rsk_window_clamp == 0))
-		req->rsk_window_clamp = full_space;
 
 	tcp_select_initial_window(sock_net(sk), full_space, req->mss,
 				  &req->rsk_rcv_wnd, &req->rsk_window_clamp,

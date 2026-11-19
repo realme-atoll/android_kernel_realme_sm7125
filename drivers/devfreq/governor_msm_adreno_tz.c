@@ -58,9 +58,6 @@ static DEFINE_SPINLOCK(suspend_lock);
 
 #define TAG "msm_adreno_tz: "
 
-#if 1
-static unsigned int adrenoboost = 1;
-#endif
 
 static u64 suspend_time;
 static u64 suspend_start;
@@ -84,28 +81,6 @@ u64 suspend_time_ms(void)
 	return time_diff;
 }
 
-#if 1
-static ssize_t adrenoboost_show(struct device *dev,
-		struct device_attribute *attr, char *buf)
-{
-	size_t count = 0;
-	count += sprintf(buf, "%d\n", adrenoboost);
-
-	return count;
-}
-
-static ssize_t adrenoboost_save(struct device *dev,
-		struct device_attribute *attr, const char *buf, size_t count)
-{
-	unsigned int input;
-
-	if (kstrtouint(buf, 10, &input) || input > 3)
-		return -EINVAL;
-
-	adrenoboost = input;
-	return count;
-}
-#endif
 
 static ssize_t gpu_load_show(struct device *dev,
 		struct device_attribute *attr,
@@ -153,16 +128,41 @@ static ssize_t suspend_time_show(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%llu\n", time_diff);
 }
 
-#if 1
-static DEVICE_ATTR(adrenoboost, 0644,
-		adrenoboost_show, adrenoboost_save);
-#endif
 
 static DEVICE_ATTR(gpu_load, 0444, gpu_load_show, NULL);
 
 static DEVICE_ATTR(suspend_time, 0444,
 		suspend_time_show,
 		NULL);
+
+static unsigned int adrenoboost = 0;
+
+static ssize_t adrenoboost_show(struct device *dev,
+		struct device_attribute *attr,
+		char *buf)
+{
+	return snprintf(buf, PAGE_SIZE, "%u\n", adrenoboost);
+}
+
+static ssize_t adrenoboost_store(struct device *dev,
+		struct device_attribute *attr,
+		const char *buf, size_t count)
+{
+	unsigned int val;
+
+	if (kstrtouint(buf, 10, &val) < 0)
+		return -EINVAL;
+
+	if (val > 3)
+		val = 3;
+
+	adrenoboost = val;
+	return count;
+}
+
+static DEVICE_ATTR(adrenoboost, 0664,
+		adrenoboost_show,
+		adrenoboost_store);
 
 static const struct device_attribute *adreno_tz_attr_list[] = {
 		&dev_attr_gpu_load,
@@ -420,6 +420,20 @@ static int tz_get_target_freq(struct devfreq *devfreq, unsigned long *freq)
 	if (level < 0) {
 		pr_err(TAG "bad freq %ld\n", stats.current_frequency);
 		return level;
+	}
+
+	if (adrenoboost > 0) {
+		switch (adrenoboost) {
+		case 1:
+			priv->bin.busy_time += priv->bin.busy_time / 2;
+			break;
+		case 2:
+			priv->bin.busy_time += priv->bin.busy_time;
+			break;
+		case 3:
+			priv->bin.busy_time += priv->bin.busy_time * 2;
+			break;
+		}
 	}
 
 	/*
