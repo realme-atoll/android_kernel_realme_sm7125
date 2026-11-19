@@ -62,6 +62,7 @@
 #include <linux/mount.h>
 #include <linux/audit.h>
 #include <linux/memcontrol.h>
+#include <linux/simple_lmk.h>
 #include <linux/ftrace.h>
 #include <linux/proc_fs.h>
 #include <linux/profile.h>
@@ -979,6 +980,7 @@ static inline void __mmput(struct mm_struct *mm)
 	ksm_exit(mm);
 	khugepaged_exit(mm); /* must run before exit_mmap */
 	exit_mmap(mm);
+	simple_lmk_mm_freed(mm);
 	mm_put_huge_zero_page(mm);
 	set_mm_exe_file(mm, NULL);
 	if (!list_empty(&mm->mmlist)) {

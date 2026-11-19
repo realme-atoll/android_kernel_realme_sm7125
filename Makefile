@@ -2,7 +2,7 @@
 VERSION = 4
 PATCHLEVEL = 14
 SUBLEVEL = 357
-EXTRAVERSION = -openela
+EXTRAVERSION =
 NAME = Petit Gorille
 
 # *DOCUMENTATION*
@@ -849,6 +849,7 @@ KBUILD_CFLAGS += $(call cc-option, -Wno-undefined-optimized)
 KBUILD_CFLAGS += $(call cc-option, -Wno-tautological-constant-out-of-range-compare)
 KBUILD_CFLAGS += $(call cc-option, -mllvm -disable-struct-const-merge)
 KBUILD_CFLAGS += $(call cc-option, -Wno-sometimes-uninitialized)
+KBUILD_CFLAGS += $(call cc-option, -Wno-array-parameter)
 
 # Quiet clang warning: comparison of unsigned expression < 0 is always false
 

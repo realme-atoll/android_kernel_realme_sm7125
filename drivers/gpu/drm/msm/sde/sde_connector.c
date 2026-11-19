@@ -19,6 +19,7 @@
 #include "sde_encoder.h"
 #include <linux/backlight.h>
 #include <linux/string.h>
+#include <linux/msm_drm_notify.h>
 #include "dsi_drm.h"
 #include "dsi_display.h"
 #include "sde_crtc.h"
@@ -120,6 +121,8 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 	}
 
 	if (c_conn->ops.set_backlight) {
+		static int last_notified_bl = -1;
+
 		event.type = DRM_EVENT_SYS_BACKLIGHT;
 		event.length = sizeof(u32);
 		msm_mode_object_event_notify(&c_conn->base.base,
@@ -127,6 +130,29 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 		rc = c_conn->ops.set_backlight(&c_conn->base,
 				c_conn->display, bl_lvl);
 		c_conn->unset_bl_level = 0;
+
+		if (last_notified_bl == 0 && brightness > 0) {
+			struct msm_drm_notifier notifier_data;
+			int blank = MSM_DRM_BLANK_UNBLANK;
+
+			notifier_data.data = &blank;
+			notifier_data.id = 0;
+			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK,
+				&notifier_data);
+			msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK,
+				&notifier_data);
+		} else if (last_notified_bl > 0 && brightness == 0) {
+			struct msm_drm_notifier notifier_data;
+			int blank = MSM_DRM_BLANK_POWERDOWN;
+
+			notifier_data.data = &blank;
+			notifier_data.id = 0;
+			msm_drm_notifier_call_chain(MSM_DRM_EARLY_EVENT_BLANK,
+				&notifier_data);
+			msm_drm_notifier_call_chain(MSM_DRM_EVENT_BLANK,
+				&notifier_data);
+		}
+		last_notified_bl = brightness;
 	}
 
 	return rc;

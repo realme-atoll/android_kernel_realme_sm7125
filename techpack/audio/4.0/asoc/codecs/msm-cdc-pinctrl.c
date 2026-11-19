@@ -37,7 +37,7 @@ static struct msm_cdc_pinctrl_info *msm_cdc_pinctrl_get_gpiodata(
 	struct msm_cdc_pinctrl_info *gpio_data;
 
 	if (!np) {
-		pr_err("%s: device node is null\n", __func__);
+		pr_debug("%s: device node is null (node may be disabled)\n", __func__);
 		return NULL;
 	}
 

@@ -278,17 +278,13 @@ int gf_parse_notify_tpinfo_flag(struct gf_dev* gf_dev) {
 
     ret = of_property_read_u32(np, FP_NOTIFY_TPINFO_FLAG, &notify_tpinfo_flag);
     if (ret) {
-        pr_err("failed to request %s, ret = %d\n", FP_NOTIFY_TPINFO_FLAG, ret);
-        goto exit;
+        pr_debug("optional %s not found (ret = %d)\n", FP_NOTIFY_TPINFO_FLAG, ret);
+        return 0;
     }
     gf_dev->notify_tpinfo_flag = notify_tpinfo_flag;
-    pr_err("gf_dev->notify_tpinfo_flag = %d\n", gf_dev->notify_tpinfo_flag);
+    pr_info("gf_dev->notify_tpinfo_flag = %d\n", gf_dev->notify_tpinfo_flag);
 
-exit:
-    if (ret) {
-        gf_cleanup_notify_tpinfo_flag(gf_dev);
-    }
-    return ret;
+    return 0;
 }
 
 int gf_parse_dts(struct gf_dev* gf_dev)
@@ -328,11 +324,10 @@ int gf_parse_dts(struct gf_dev* gf_dev)
         pr_err("failed to parse power list, rc = %d\n", rc);
         goto err_pwr;
     }
-    pr_err("end gf_parse_dts !\n");
 
     gf_parse_notify_tpinfo_flag(gf_dev);
 
-    pr_err("end gf_parse_dts !\n");
+    pr_debug("end gf_parse_dts !\n");
 
     return rc;
 
