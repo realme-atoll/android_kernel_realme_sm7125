@@ -11971,7 +11971,7 @@ static void oplus_set_otg_switch_status(bool value)
 		return;
 	}
 
-	g_oplus_chip->ui_otg_switch = true;
+	g_oplus_chip->ui_otg_switch = value;
 	chg = &g_oplus_chip->pmic_spmi.smb5_chip->chg;
 
 	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
@@ -11990,9 +11990,14 @@ static void oplus_set_otg_switch_status(bool value)
 		return;
 	}
 
-	g_oplus_chip->otg_switch = true;
-	rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
-			TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, 0);
+	g_oplus_chip->otg_switch = value;
+
+	if (g_oplus_chip->otg_switch == true)
+		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
+				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, 0);
+	else
+		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
+				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, EN_TRY_SNK_BIT);
 
 	if (rc < 0) {
 		chg_err("fail to write pmic register\n");

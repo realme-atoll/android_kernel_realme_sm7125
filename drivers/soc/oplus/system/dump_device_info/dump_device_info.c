@@ -31,6 +31,7 @@ static char project_version[8];
 static char pcb_version[8];
 char soc_serialno[16];
 #define BUILD_PROP  "/my_product/build.prop"
+#define BUILD_PROP_FALLBACK "/system/build.prop"
 char build_version_key[24] = "ro.build.version.ota=";
 char build_version[64];
 
@@ -162,7 +163,10 @@ static void get_version_info_handle(struct work_struct *work)
         printk("[get_version_info_handle]\n");
         fp = filp_open(BUILD_PROP, O_RDONLY, 0600);
         if (IS_ERR(fp)) {
-                pr_info("open %s file fail fp:%p %d \n", BUILD_PROP, fp,PTR_ERR(fp));
+                fp = filp_open(BUILD_PROP_FALLBACK, O_RDONLY, 0600);
+        }
+        if (IS_ERR(fp)) {
+                pr_info("open %s / %s file fail fp:%p %d \n", BUILD_PROP, BUILD_PROP_FALLBACK, fp, PTR_ERR(fp));
                 goto out;
         }
 
