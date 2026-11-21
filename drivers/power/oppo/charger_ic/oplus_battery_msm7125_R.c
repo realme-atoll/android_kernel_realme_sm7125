@@ -47,6 +47,10 @@
 #include "../../supply/qcom/battery.h"
 #include "../../supply/qcom/storm-watch.h"
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+#include <linux/fastchg.h>
+#endif
+
 #include <soc/oppo/boot_mode.h>
 #include <soc/oppo/device_info.h>
 #include <soc/oplus/system/oplus_project.h>
@@ -2010,6 +2014,9 @@ static int set_sdp_current(struct smb_charger *chg, int icl_ua)
 	/* lizhijie@BSP.CHG.Basic, 2020/02/25, lzj Add for charger */
 	if (icl_ua <= USBIN_150MA) {
 		icl_options = 0;
+
+	} else if (icl_ua >= USBIN_900MA) {
+		icl_options = CFG_USB3P0_SEL_BIT | USB51_MODE_BIT;
 
 	} else {
 		icl_options = USB51_MODE_BIT;
@@ -5259,6 +5266,12 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			usb_current = SDP_CURRENT_UA;
 		}
 
+#ifdef CONFIG_FORCE_FAST_CHARGE
+		if (force_fast_charge > 0 && usb_current == USBIN_500MA) {
+			usb_current = USBIN_900MA;
+		}
+#endif
+
 		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER, true,
 				usb_current);
 
@@ -6982,10 +6995,15 @@ static void update_sw_icl_max(struct smb_charger *chg, int pst)
 		 */
 		if (!is_client_vote_enabled(chg->usb_icl_votable,
 				USB_PSY_VOTER)) {
+#ifdef CONFIG_FORCE_FAST_CHARGE
+			int sdp_icl = (force_fast_charge > 0) ? USBIN_900MA : SDP_CURRENT_UA;
+#else
+			int sdp_icl = SDP_CURRENT_UA;
+#endif
 			/* if flash is active force 500mA */
 			vote(chg->usb_icl_votable, USB_PSY_VOTER, true,
 				is_flash_active(chg) ?
-				SDP_CURRENT_UA : SDP_100_MA);
+				sdp_icl : SDP_100_MA);
 		}
 
 		vote(chg->usb_icl_votable, SW_ICL_MAX_VOTER, false, 0);
@@ -11971,7 +11989,7 @@ static void oplus_set_otg_switch_status(bool value)
 		return;
 	}
 
-	g_oplus_chip->ui_otg_switch = true;
+	g_oplus_chip->ui_otg_switch = value;
 	chg = &g_oplus_chip->pmic_spmi.smb5_chip->chg;
 
 	rc = smblib_read(chg, USBIN_BASE + INT_RT_STS_OFFSET, &stat);
@@ -11990,9 +12008,14 @@ static void oplus_set_otg_switch_status(bool value)
 		return;
 	}
 
-	g_oplus_chip->otg_switch = true;
-	rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
-			TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, 0);
+	g_oplus_chip->otg_switch = value;
+
+	if (g_oplus_chip->otg_switch == true)
+		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
+				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, 0);
+	else
+		rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
+				TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK, EN_SNK_ONLY_BIT);
 
 	if (rc < 0) {
 		chg_err("fail to write pmic register\n");
@@ -14247,7 +14270,7 @@ static int smb5_configure_typec(struct smb_charger *chg)
 #else
 	rc = smblib_masked_write(chg, TYPE_C_MODE_CFG_REG,
 			TYPEC_POWER_ROLE_CMD_MASK | TYPEC_TRY_MODE_MASK,
-			EN_TRY_SNK_BIT);
+			EN_SNK_ONLY_BIT);
 #endif
 
 
@@ -17211,6 +17234,27 @@ void oplus_set_typec_sinkonly(void)
 {
 	oplus_set_otg_switch_status(false);
 };
+
+#ifdef CONFIG_FORCE_FAST_CHARGE
+void oplus_force_fast_charge_update(void)
+{
+	struct smb_charger *chg;
+
+	if (!g_oplus_chip || !g_oplus_chip->pmic_spmi.smb5_chip)
+		return;
+
+	chg = &g_oplus_chip->pmic_spmi.smb5_chip->chg;
+	if (!chg->usb_icl_votable)
+		return;
+
+	if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB) {
+		int icl = (force_fast_charge > 0) ? USBIN_900MA : SDP_CURRENT_UA;
+		vote(chg->usb_icl_votable, USB_PSY_VOTER, true, icl);
+		if (chg->usb_psy)
+			power_supply_changed(chg->usb_psy);
+	}
+}
+#endif
 struct oplus_chg_operations  smb5_chg_ops = {
 	.dump_registers = dump_regs,
 	.kick_wdt = smbchg_kick_wdt,
@@ -17736,7 +17780,7 @@ static int smb5_probe(struct platform_device *pdev)
 	/* lizhijie@BSP.CHG.Basic, 2020/02/25, lzj Add for charging*/
 	oplus_chg_parse_custom_dt(oplus_chip);
 	oplus_chg_init(oplus_chip);
-	oplus_set_otg_switch_status(true);
+	oplus_set_otg_switch_status(false);
 	schedule_delayed_work(&chg->regist_pd, 0);
 #ifdef VENDOR_EDIT
 //Gang.Yan add for usbtemp

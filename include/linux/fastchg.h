@@ -18,5 +18,6 @@
 #define _LINUX_FASTCHG_H
 
 extern int force_fast_charge;
+void oplus_force_fast_charge_update(void);
 
 #endif

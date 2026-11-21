@@ -397,9 +397,9 @@ int sde_connector_update_hbm(struct drm_connector *connector)
 
 					if (vblank) {
 						ret = wait_event_timeout(*drm_crtc_vblank_waitqueue(crtc),
-								target_vblank == drm_crtc_vblank_count(crtc),
-								msecs_to_jiffies((vblank + 1) * 17));
-						if (!ret) {
+								target_vblank <= drm_crtc_vblank_count(crtc),
+								msecs_to_jiffies((vblank + 1) * 20));
+						if (!ret && target_vblank > drm_crtc_vblank_count(crtc)) {
 							pr_err("OnscreenFingerprint failed to wait vblank timeout target_vblank=%d current_vblank=%d\n",
 									target_vblank, drm_crtc_vblank_count(crtc));
 						}
@@ -515,9 +515,9 @@ int sde_connector_update_hbm(struct drm_connector *connector)
 			mutex_unlock(&dsi_display->panel->panel_lock);
 			if (vblank) {
 				ret = wait_event_timeout(*drm_crtc_vblank_waitqueue(crtc),
-						target_vblank == drm_crtc_vblank_count(crtc),
-						msecs_to_jiffies((vblank + 1) * 17));
-				if (!ret) {
+						target_vblank <= drm_crtc_vblank_count(crtc),
+						msecs_to_jiffies((vblank + 1) * 20));
+				if (!ret && target_vblank > drm_crtc_vblank_count(crtc)) {
 					pr_err("OnscreenFingerprint failed to wait vblank timeout target_vblank=%d current_vblank=%d\n",
 							target_vblank, drm_crtc_vblank_count(crtc));
 				}

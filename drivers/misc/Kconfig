@@ -648,6 +648,13 @@ config SIM_DETECT
 	  Say Y here to enable sim detect system support
 #endif /* OPLUS_FEATURE_TP_BASIC */
 
+config FORCE_FAST_CHARGE
+	bool "Force USB fast charge"
+	default y
+	help
+	  Say Y here to enable Force USB fast charge sysfs interface,
+	  allowing USB 2.0 ports to charge up to 900mA.
+
 endmenu
 
 config OKL4_USER_VIPC

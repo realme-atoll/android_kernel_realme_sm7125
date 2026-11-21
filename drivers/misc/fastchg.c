@@ -29,6 +29,10 @@
 
 int force_fast_charge = 1;
 
+void __attribute__((weak)) oplus_force_fast_charge_update(void)
+{
+}
+
 static int __init get_fastcharge_opt(char *ffc)
 {
 	if (strcmp(ffc, "0") == 0) {
@@ -55,6 +59,8 @@ static ssize_t force_fast_charge_store(struct kobject *kobj, struct kobj_attribu
 	sscanf(buf, "%d ", &force_fast_charge);
 	if (force_fast_charge < 0 || force_fast_charge > 1)
 		force_fast_charge = 0;
+
+	oplus_force_fast_charge_update();
 
 	return count;
 }
