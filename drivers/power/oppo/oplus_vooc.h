@@ -231,6 +231,7 @@ struct oplus_vooc_chip {
 	int *vooc_current_lvl;
 	int vooc_current_lvl_cnt;
 	bool reset_adapter;
+	int fastchg_current;
 };
 
 struct oplus_vooc_cp {
@@ -340,6 +341,7 @@ void oplus_vooc_uart_reset(void);
 void oplus_vooc_set_adapter_update_real_status(int real);
 void oplus_vooc_set_adapter_update_report_status(int report);
 int oplus_vooc_get_fast_chg_type(void);
+int oplus_vooc_get_fastchg_current(void);
 void oplus_vooc_set_disable_adapter_output(bool disable);
 void oplus_vooc_set_vooc_max_current_limit(int current_level);
 void oplus_vooc_turn_off_fastchg(void);

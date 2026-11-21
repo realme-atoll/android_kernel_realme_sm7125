@@ -681,11 +681,15 @@ int oplus_battery_get_property(struct power_supply *psy,
 			break;
 		case POWER_SUPPLY_PROP_CURRENT_NOW:
 			if (oplus_vooc_get_fastchg_started() == true) {
-				chip->icharging = oplus_gauge_get_prev_batt_current();
+				int vooc_curr = oplus_vooc_get_fastchg_current();
+				if (vooc_curr > 0)
+					val->intval = -vooc_curr;
+				else
+					val->intval = (oplus_vooc_get_fast_chg_type() == SVOOC_ADAPTER_1 || oplus_vooc_get_fast_chg_type() == 0x20) ? -6500 : -5000;
 			} else {
 				chip->icharging = oplus_gauge_get_batt_current();
+				val->intval = chip->icharging;
 			}
-			val->intval = chip->icharging;
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
 			if (oplus_vooc_get_fastchg_started() == true) {
@@ -695,20 +699,17 @@ int oplus_battery_get_property(struct power_supply *psy,
 			}
 			break;
 		case POWER_SUPPLY_PROP_CHARGE_NOW:
-			if (oplus_vooc_get_fastchg_started() == true && (chip->vbatt_num == 2 || is_vooc_support_single_batt_svooc() == true)
-			&& oplus_vooc_get_fast_chg_type() != CHARGER_SUBTYPE_FASTCHG_VOOC) {
-
+			if (oplus_vooc_get_fastchg_started() == true) {
 				switch (oplus_vooc_get_fast_chg_type()) {
+				case  SVOOC_ADAPTER_1:
+				case  0x20:
+					val->intval = 10000;
+					break;
 				case  CHARGER_SUBTYPE_FASTCHG_VOOC:
 				case  VOOC_ADAPTER_1:
 				case  VOOC_ADAPTER_2:
-					val->intval = chip->charger_volt;
-					break;
-				case  SVOOC_ADAPTER_1:
-					val->intval = 10000;
-					break;
 				default:
-					val->intval = 10000;
+					val->intval = chip->charger_volt;
 					break;
 				}
 			} else {

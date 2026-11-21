@@ -257,6 +257,76 @@ static void oplus_vooc_check_charger_out(struct oplus_vooc_chip *chip)
 
 int multistepCurrent[] = {1500, 2000, 3000, 4000, 5000, 6000};
 
+static int oplus_vooc_level_to_current_ma(struct oplus_vooc_chip *chip, int lvl)
+{
+	int current_ma = 0;
+
+	if (!chip)
+		return 0;
+
+	if (chip->fast_chg_type == SVOOC_ADAPTER_1 || chip->fast_chg_type == 0x20) {
+		switch (lvl) {
+		case 6:
+			current_ma = 6500;
+			break;
+		case 5:
+			current_ma = 5000;
+			break;
+		case 4:
+			current_ma = 4000;
+			break;
+		case 3:
+			current_ma = 3000;
+			break;
+		case 2:
+			current_ma = 2000;
+			break;
+		case 1:
+			current_ma = 1500;
+			break;
+		default:
+			if (lvl > 6)
+				current_ma = 6500;
+			else if (lvl > 0)
+				current_ma = lvl * 1000;
+			else
+				current_ma = 6500;
+			break;
+		}
+	} else {
+		switch (lvl) {
+		case 6:
+			current_ma = 6000;
+			break;
+		case 5:
+			current_ma = 5000;
+			break;
+		case 4:
+			current_ma = 4000;
+			break;
+		case 3:
+			current_ma = 3000;
+			break;
+		case 2:
+			current_ma = 2000;
+			break;
+		case 1:
+			current_ma = 1500;
+			break;
+		default:
+			if (lvl > 6)
+				current_ma = 6000;
+			else if (lvl > 0)
+				current_ma = lvl * 1000;
+			else
+				current_ma = 5000;
+			break;
+		}
+	}
+
+	return current_ma;
+}
+
 #define VOOC_TEMP_OVER_COUNTS	2
 
 static int oplus_vooc_set_current_1_temp_normal_range(struct oplus_vooc_chip *chip, int vbat_temp_cur)
@@ -933,6 +1003,7 @@ static void oplus_vooc_fastchg_func(struct work_struct *work)
 			oplus_chg_set_input_current_without_aicl(1200);
 			chip->allow_reading = false;
 			chip->fastchg_started = true;
+			chip->fastchg_current = oplus_vooc_level_to_current_ma(chip, pre_ret_info);
 			chip->fastchg_ing = false;
 			chip->fastchg_dummy_started = false;
 			chip->fastchg_to_warm = false;
@@ -1167,6 +1238,7 @@ static void oplus_vooc_fastchg_func(struct work_struct *work)
 			pre_ret_info = ret_info;
 		}
 
+		chip->fastchg_current = oplus_vooc_level_to_current_ma(chip, ret_info);
 		vooc_xlog_printk(CHG_LOG_CRTI, "temp_range[%d-%d-%d-%d-%d]", chip->vooc_low_temp, chip->vooc_little_cold_temp,
 			chip->vooc_cool_temp, chip->vooc_little_cool_temp, chip->vooc_normal_low_temp, chip->vooc_high_temp);
 		vooc_xlog_printk(CHG_LOG_CRTI, " volt:%d,temp:%d,soc:%d,current_now:%d,rm:%d, i2c_err:%d, ret_info:%d\n",
@@ -1367,6 +1439,7 @@ out:
 		chip->fastchg_ing = false;
 		chip->fastchg_to_normal = true;
 		chip->fastchg_started = false;
+		chip->fastchg_current = 0;
 		chip->fastchg_to_warm = false;
 		if (data == VOOC_NOTIFY_BAD_CONNECTED || data == VOOC_NOTIFY_DATA_UNKNOWN)
 			charger_abnormal_log = CRITICAL_LOG_VOOC_BAD_CONNECTED;
@@ -2070,6 +2143,20 @@ int oplus_vooc_get_fast_chg_type(void)
 		return chip->fast_chg_type;
 	}
 }
+
+int oplus_vooc_get_fastchg_current(void)
+{
+	struct oplus_vooc_chip *chip = g_vooc_chip;
+
+	if (!chip || !chip->fastchg_started)
+		return 0;
+
+	if (chip->fastchg_current > 0)
+		return chip->fastchg_current;
+
+	return (chip->fast_chg_type == SVOOC_ADAPTER_1 || chip->fast_chg_type == 0x20) ? 6500 : 5000;
+}
+EXPORT_SYMBOL(oplus_vooc_get_fastchg_current);
 
 void oplus_vooc_set_disable_adapter_output(bool disable)
 {
