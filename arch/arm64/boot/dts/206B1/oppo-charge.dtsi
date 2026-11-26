@@ -426,7 +426,7 @@
 
 	//for oplus chg framework:
 	qcom,input_current_charger_ma = <2000>;
-	qcom,pd_input_current_charger_ma = <2000>;
+	qcom,pd_input_current_charger_ma = <2400>;
 	qcom,qc_input_current_charger_ma = <2000>;
 
 	qcom,input_current_usb_ma = <500>;
@@ -601,7 +601,8 @@
 	qcom,sw_vfloat_over_protect_enable;
 
 	//for PD9V or QC9V
-	qcom,vbatt_pdqc_to_5v_thr = <4100>;
+	qcom,vbatt_pdqc_to_9v_thr = <4350>;
+	qcom,vbatt_pdqc_to_5v_thr = <4400>;
 
 	qcom,vooc_show_ui_soc_decimal;
 	qcom,ui_soc_decimal_speedmin = <20>;//2A
@@ -767,7 +768,7 @@
 		reg = <0x0a>;
 		qcom,oplus_batt_4400mv;
 		qcom,support_vooc_by_normal_charger_path;
-		qcom,vooc_fw_update_newmethod;
+		//qcom,vooc_fw_update_newmethod;
 		qcom,vooc-low-temp = <50>;
 		qcom,vooc-high-temp = <430>;
 		qcom,vooc-low-soc = <1>;

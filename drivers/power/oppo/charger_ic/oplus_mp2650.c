@@ -582,9 +582,12 @@ int mp2650_input_current_limit_write(int current_ma)
     	if (chg_vol < sw_aicl_point) {
         	i = i - 3; //1.5
         	goto aicl_pre_step;
-    	} else if (current_ma < 3000) {
+    	} else if (current_ma < 2000) {
 		i = i - 1;
         	goto aicl_end;
+	} else {
+		i = 5;
+		goto aicl_end;
 	}
 
 aicl_pre_step:

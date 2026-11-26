@@ -50,6 +50,9 @@ extern struct oplus_chg_chip *g_oplus_chip;
 
 static struct oplus_vooc_chip *g_vooc_chip = NULL;
 static struct oplus_vooc_cp *g_vooc_cp = NULL;
+static int svooc_early_full_cap = 0;
+static int svooc_early_full_lvl = 0;
+static bool svooc_early_full_stepping = false;
 bool __attribute__((weak)) oplus_get_fg_i2c_err_occured(void)
 {
 	return false;
@@ -257,6 +260,9 @@ static void check_charger_out_work_func(struct work_struct *work)
 
 	chg_vol = oplus_chg_get_charger_voltage();
 	if (chg_vol >= 0 && chg_vol < 2000) {
+		svooc_early_full_stepping = false;
+		svooc_early_full_cap = 0;
+		svooc_early_full_lvl = 0;
 		chip->vops->reset_fastchg_after_usbout(chip);
 		oplus_chg_clear_chargerid_info();
 		oplus_vooc_battery_update();
@@ -285,7 +291,7 @@ static void oplus_vooc_check_charger_out(struct oplus_vooc_chip *chip)
 {
 	vooc_xlog_printk(CHG_LOG_CRTI, "  call\n");
 	schedule_delayed_work(&chip->check_charger_out_work,
-		round_jiffies_relative(msecs_to_jiffies(3000)));
+		msecs_to_jiffies(1000));
 }
 
 int multistepCurrent[] = {1500, 2000, 3000, 4000, 5000, 6000};
@@ -875,6 +881,7 @@ static void oplus_vooc_fastchg_func(struct work_struct *work)
 	int remain_cap = 0;
 	static bool phone_mcu_updated = false;
 	static bool normalchg_disabled = false;
+	bool early_full_step_down = false;
 	int abnormal_dis_cnt = 0;
 #ifdef OPLUS_CUSTOM_OP_DEF
 	int skin_temp = 0;
@@ -974,6 +981,7 @@ static void oplus_vooc_fastchg_func(struct work_struct *work)
 			chip->btb_temp_over = false;
 			chip->reset_adapter = false;
 			chip->suspend_charger = false;
+			oplus_vooc_battery_update();
 		} else {
 			chip->allow_reading = true;
 			chip->fastchg_dummy_started = true;
@@ -1239,6 +1247,9 @@ static void oplus_vooc_fastchg_func(struct work_struct *work)
 		} else {
 			pre_ret_info = ret_info;
 		}
+		if (svooc_early_full_cap > 0 && ret_info > svooc_early_full_cap)
+			ret_info = svooc_early_full_cap;
+		svooc_early_full_lvl = ret_info;
 
 #ifdef OPLUS_CUSTOM_OP_DEF
 		/* Only applicable for devices, which want to control the
@@ -1274,12 +1285,34 @@ static void oplus_vooc_fastchg_func(struct work_struct *work)
 
 #endif
 
+		oplus_vooc_battery_update();
 		vooc_xlog_printk(CHG_LOG_CRTI, "temp_range[%d-%d-%d-%d-%d]", chip->vooc_low_temp, chip->vooc_little_cold_temp,
 			chip->vooc_cool_temp, chip->vooc_little_cool_temp, chip->vooc_normal_low_temp, chip->vooc_high_temp);
 		vooc_xlog_printk(CHG_LOG_CRTI, " volt:%d,temp:%d,soc:%d,current_now:%d,rm:%d, i2c_err:%d, ret_info:%d\n",
 			volt, temp, soc, current_now, remain_cap, oplus_get_fg_i2c_err_occured(), ret_info);
 	} else if (data == VOOC_NOTIFY_NORMAL_TEMP_FULL) {
 		vooc_xlog_printk(CHG_LOG_CRTI, "VOOC_NOTIFY_NORMAL_TEMP_FULL\r\n");
+		if (oplus_chg_get_ui_soc() <= 85) {
+			if (svooc_early_full_cap != -1 && svooc_early_full_lvl > 1) {
+				svooc_early_full_cap = svooc_early_full_lvl - 1;
+				svooc_early_full_stepping = true;
+				early_full_step_down = true;
+				vooc_xlog_printk(CHG_LOG_CRTI,
+					"early 0x5a at soc:%d, step down lvl %d -> %d\n",
+					oplus_chg_get_ui_soc(), svooc_early_full_lvl, svooc_early_full_cap);
+			} else if (svooc_early_full_lvl == 0 && svooc_early_full_cap != -1) {
+				/* 0x5a arrived before a current-level packet; retry once instead of locking fastchg_to_normal */
+				svooc_early_full_cap = -1;
+				svooc_early_full_stepping = true;
+				early_full_step_down = true;
+				vooc_xlog_printk(CHG_LOG_CRTI,
+					"early 0x5a at soc:%d with lvl:0, retry svooc\n",
+					oplus_chg_get_ui_soc());
+			} else {
+				svooc_early_full_cap = -1;
+				svooc_early_full_stepping = false;
+			}
+		}
 		if (chip->support_single_batt_svooc == 1) {
 			vooc_reset_cp();
 		}
@@ -1472,7 +1505,12 @@ out:
 		}
 		chip->allow_reading = true;
 		chip->fastchg_ing = false;
-		chip->fastchg_to_normal = true;
+		if (early_full_step_down) {
+			chip->fastchg_to_normal = false;
+			chip->fastchg_dummy_started = true;
+		} else {
+			chip->fastchg_to_normal = true;
+		}
 		chip->fastchg_started = false;
 		chip->fastchg_to_warm = false;
 		if (data == VOOC_NOTIFY_BAD_CONNECTED || data == VOOC_NOTIFY_DATA_UNKNOWN)
@@ -1522,7 +1560,10 @@ out:
 			|| data == VOOC_NOTIFY_DATA_UNKNOWN
 			|| data == VOOC_NOTIFY_LOW_TEMP_FULL
 			|| chip->fastchg_batt_temp_status == BAT_TEMP_EXIT) {
-		if (oplus_vooc_get_reply_bits() != 7 || data != VOOC_NOTIFY_LOW_TEMP_FULL) {
+		if (early_full_step_down) {
+			oplus_chg_set_charger_type_unknown();
+			oplus_chg_wake_update_work();
+		} else if (oplus_vooc_get_reply_bits() != 7 || data != VOOC_NOTIFY_LOW_TEMP_FULL) {
 			oplus_chg_set_charger_type_unknown();
 			oplus_vooc_check_charger_out(chip);
 		}
@@ -1660,6 +1701,7 @@ void fw_update_thread(struct work_struct *work)
 	}
 	chip->mcu_update_ing = false;
 	oplus_chg_unsuspend_charger();
+	oplus_chg_wake_update_work();
 	oplus_vooc_set_awake(chip, false);
 }
 
@@ -2032,10 +2074,17 @@ bool oplus_vooc_get_btb_temp_over(void)
 void oplus_vooc_reset_fastchg_after_usbout(void)
 {
 	if (!g_vooc_chip) {
+		svooc_early_full_stepping = false;
+		svooc_early_full_cap = 0;
+		svooc_early_full_lvl = 0;
 		return;
-	} else {
-		g_vooc_chip->vops->reset_fastchg_after_usbout(g_vooc_chip);
 	}
+	if (!svooc_early_full_stepping && !g_vooc_chip->reset_adapter
+			&& oplus_chg_get_charger_voltage() < 2000) {
+		svooc_early_full_cap = 0;
+		svooc_early_full_lvl = 0;
+	}
+	g_vooc_chip->vops->reset_fastchg_after_usbout(g_vooc_chip);
 }
 
 void oplus_vooc_switch_fast_chg(void)
@@ -2408,6 +2457,11 @@ void oplus_vooc_check_set_mcu_sleep(void)
 		if (is_vooc_support_single_batt_svooc() != true)
 		oplus_vooc_set_mcu_sleep();
 	}
+}
+
+bool oplus_vooc_is_early_stepping(void)
+{
+	return svooc_early_full_stepping;
 }
 
 bool oplus_vooc_get_reset_adapter_st(void)

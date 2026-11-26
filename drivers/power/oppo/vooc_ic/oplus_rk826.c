@@ -1116,7 +1116,7 @@ update_asic_fw:
 		chip->mcu_boot_by_gpio = false;
 		opchg_set_clock_sleep(chip);
 		__pm_stay_awake(rk826_update_wake_lock);
-		if (rk826_fw_update_check(chip) == FW_CHECK_FAIL || fw_check_err) {
+		if (rk826_fw_update_check(chip) == FW_CHECK_FAIL) {
 			chg_debug("firmware update start\n");
 			do {
 					update_result = rk826_fw_write_00_code(chip);

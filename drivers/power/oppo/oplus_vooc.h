@@ -381,6 +381,7 @@ void oplus_vooc_get_vooc_chip_handle(struct oplus_vooc_chip **chip);
 void oplus_vooc_reset_temp_range(struct oplus_vooc_chip *chip);
 void oplus_vooc_check_set_mcu_sleep(void);
 bool oplus_vooc_get_reset_adapter_st(void);
+bool oplus_vooc_is_early_stepping(void);
 bool oplus_vooc_get_mcu_update_finish_status(void);
 void oplus_vooc_set_update_finish_status_false(void);
 int oplus_vooc_get_reset_active_status(void);
