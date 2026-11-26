@@ -82,6 +82,7 @@ int reg_access_allow = 0;
 int mp2650_reg = 0;
 static int aicl_result = 500;
 void mp2650_wireless_set_mps_otg_en_val(int value);
+int mp2650_get_vbus_voltage(void);
 
 static DEFINE_MUTEX(mp2650_i2c_access);
 
@@ -394,7 +395,7 @@ int mp2650_get_charger_vol(void)
 #ifdef CONFIG_OPLUS_CHARGER_MTK
     chg_vol = battery_meter_get_charger_voltage();
 #else
-    chg_vol = qpnp_get_prop_charger_voltage_now();
+    chg_vol = mp2650_get_vbus_voltage();
 #endif
     return chg_vol;
 }
@@ -581,9 +582,12 @@ int mp2650_input_current_limit_write(int current_ma)
     	if (chg_vol < sw_aicl_point) {
         	i = i - 3; //1.5
         	goto aicl_pre_step;
-    	} else if (current_ma < 3000) {
+    	} else if (current_ma < 2000) {
 		i = i - 1;
         	goto aicl_end;
+	} else {
+		i = 5;
+		goto aicl_end;
 	}
 
 aicl_pre_step:
@@ -1754,6 +1758,7 @@ int mp2650_hardware_init(void)
     mp2650_set_wdt_timer(REG09_MP2650_WTD_TIMER_40S);
 
     //mp2650_enable_hiz(chip);
+    mp2650_input_current_limit_without_aicl(500);
 
     return true;
 }

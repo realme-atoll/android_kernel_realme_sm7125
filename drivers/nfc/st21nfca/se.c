@@ -330,13 +330,6 @@ int st21nfca_connectivity_event_received(struct nfc_hci_dev *hdev, u8 host,
 		    skb->data[0] != NFC_EVT_TRANSACTION_AID_TAG)
 			return -EPROTO;
 
-		/*
-		 * Buffer should have enough space for at least
-		 * two tag fields + two length fields + aid_len (skb->data[1])
-		 */
-		if (skb->len < skb->data[1] + 4)
-			return -EPROTO;
-
 		transaction = (struct nfc_evt_transaction *)devm_kzalloc(dev,
 						   skb->len - 2, GFP_KERNEL);
 		if (!transaction)

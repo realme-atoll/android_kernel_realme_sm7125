@@ -380,12 +380,15 @@ int sde_connector_update_hbm(struct drm_connector *connector)
 
 				if (OPPO_DISPLAY_AOD_SCENE != get_oppo_display_scene() &&
 						dsi_display->panel->bl_config.bl_level) {
-					if (dsi_display->config.panel_mode != DSI_OP_VIDEO_MODE) {
-						current_vblank = drm_crtc_vblank_count(crtc);
-						ret = wait_event_timeout(*drm_crtc_vblank_waitqueue(crtc),
-								current_vblank != drm_crtc_vblank_count(crtc),
-								msecs_to_jiffies(17));
-					}
+					int vblank_get = drm_crtc_vblank_get(crtc);
+
+					/* Sync to vblank start so HBM on and MDP dimlayer flush hit the same frame */
+					current_vblank = drm_crtc_vblank_count(crtc);
+					ret = wait_event_timeout(*drm_crtc_vblank_waitqueue(crtc),
+							current_vblank != drm_crtc_vblank_count(crtc),
+							msecs_to_jiffies(17));
+					if (!vblank_get)
+						drm_crtc_vblank_put(crtc);
 					if (!strcmp(panel->oppo_priv.vendor_name, "AMS643YE01"))
 						usleep_range(4500,4600);
 					vblank = panel->cur_mode->priv_info->fod_on_vblank;
@@ -394,9 +397,9 @@ int sde_connector_update_hbm(struct drm_connector *connector)
 
 					if (vblank) {
 						ret = wait_event_timeout(*drm_crtc_vblank_waitqueue(crtc),
-								target_vblank == drm_crtc_vblank_count(crtc),
-								msecs_to_jiffies((vblank + 1) * 17));
-						if (!ret) {
+								target_vblank <= drm_crtc_vblank_count(crtc),
+								msecs_to_jiffies((vblank + 1) * 20));
+						if (!ret && target_vblank > drm_crtc_vblank_count(crtc)) {
 							pr_err("OnscreenFingerprint failed to wait vblank timeout target_vblank=%d current_vblank=%d\n",
 									target_vblank, drm_crtc_vblank_count(crtc));
 						}
@@ -453,6 +456,8 @@ int sde_connector_update_hbm(struct drm_connector *connector)
 			}
 
 			vblank = panel->cur_mode->priv_info->fod_off_vblank;
+			if (dsi_display->config.panel_mode == DSI_OP_VIDEO_MODE && !vblank)
+				vblank = 1;
 			target_vblank = drm_crtc_vblank_count(crtc) + vblank;
 
 			dsi_display_clk_ctrl(dsi_display->dsi_clk_handle,
@@ -510,9 +515,9 @@ int sde_connector_update_hbm(struct drm_connector *connector)
 			mutex_unlock(&dsi_display->panel->panel_lock);
 			if (vblank) {
 				ret = wait_event_timeout(*drm_crtc_vblank_waitqueue(crtc),
-						target_vblank == drm_crtc_vblank_count(crtc),
-						msecs_to_jiffies((vblank + 1) * 17));
-				if (!ret) {
+						target_vblank <= drm_crtc_vblank_count(crtc),
+						msecs_to_jiffies((vblank + 1) * 20));
+				if (!ret && target_vblank > drm_crtc_vblank_count(crtc)) {
 					pr_err("OnscreenFingerprint failed to wait vblank timeout target_vblank=%d current_vblank=%d\n",
 							target_vblank, drm_crtc_vblank_count(crtc));
 				}

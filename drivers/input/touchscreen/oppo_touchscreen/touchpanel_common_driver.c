@@ -15,6 +15,7 @@
 #include <linux/time.h>
 #include <linux/delay.h>
 #include <linux/regulator/consumer.h>
+#include <linux/reboot.h>
 
 #ifdef CONFIG_OPLUS_SYSTEM_SEC_DEBUG
 #include <soc/oplus/system/sec_debug.h>
@@ -44,6 +45,7 @@
 #if GESTURE_RATE_MODE
 #include "gesture_recon_rate.h"
 #endif
+
 /*******Part0:LOG TAG Declear************************/
 #define TPD_PRINT_POINT_NUM 150
 #define TPD_DEVICE "touchpanel"
@@ -72,6 +74,20 @@
 unsigned int tp_debug = 0;
 unsigned int tp_register_times = 0;
 struct touchpanel_data *g_tp = NULL;
+
+static int tp_reboot_notifier_fn(struct notifier_block *nb,
+				unsigned long action, void *data)
+{
+	if (g_tp && g_tp->ts_ops && g_tp->ts_ops->power_control) {
+		TPD_INFO("%s: power off touch panel on reboot\n", __func__);
+		g_tp->ts_ops->power_control(g_tp->chip_data, false);
+	}
+	return NOTIFY_DONE;
+}
+
+static struct notifier_block tp_reboot_nb = {
+	.notifier_call = tp_reboot_notifier_fn,
+};
 static DECLARE_WAIT_QUEUE_HEAD(waiter);
 
 #ifdef CONFIG_TOUCHIRQ_UPDATE_QOS
@@ -6548,6 +6564,9 @@ int register_common_touch_device(struct touchpanel_data *pdata)
     } else {
         ts->irq = ts->client->irq;
     }
+    if (tp_register_times == 0) {
+        register_reboot_notifier(&tp_reboot_nb);
+    }
     tp_register_times++;
     g_tp = ts;
     complete(&ts->pm_complete);
@@ -6752,6 +6771,29 @@ NO_NEED_SUSPEND:
 
     return 0;
 }
+
+/*
+ * AOD changes the panel to LP1/LP2 after the normal DRM unblank callback has
+ * already run.  Re-enter the suspended gesture configuration at that exact
+ * transition instead of relying on tp_resume() to observe the doze state.
+ */
+void touchpanel_enter_aod(void)
+{
+    struct touchpanel_data *ts = g_tp;
+
+    if (!ts || !ts->black_gesture_support || !(ts->gesture_enable & 0x01))
+        return;
+
+    if (ts->is_suspended) {
+        mutex_lock(&ts->mutex);
+        operate_mode_switch(ts);
+        mutex_unlock(&ts->mutex);
+        return;
+    }
+
+    tp_suspend(ts->dev);
+}
+EXPORT_SYMBOL(touchpanel_enter_aod);
 
 /**
  * touchpanel_ts_suspend - touchpanel resume function

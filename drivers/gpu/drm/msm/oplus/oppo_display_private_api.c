@@ -673,6 +673,25 @@ static ssize_t oplus_display_set_cabc(struct kobject *kobj,
 }
 #endif/*OPLUS_FEATURE_LCD_CABC*/
 
+extern int oppo_skip_pcc_override;
+
+static ssize_t oppo_display_get_skip_pcc_override(struct kobject *kobj,
+	struct kobj_attribute *attr, char *buf)
+{
+	return sprintf(buf, "%d\n", oppo_skip_pcc_override);
+}
+
+static ssize_t oppo_display_set_skip_pcc_override(struct kobject *kobj,
+	struct kobj_attribute *attr,
+	const char *buf, size_t count)
+{
+	int val = 0;
+	if (sscanf(buf, "%d", &val) == 1) {
+		oppo_skip_pcc_override = val;
+	}
+	return count;
+}
+
 static ssize_t oppo_display_get_hbm(struct kobject *kobj,
 	struct kobj_attribute *attr, char *buf)
 {
@@ -1984,7 +2003,9 @@ static ssize_t oppo_display_set_dimlayer_hbm(struct kobject *kobj,
 	}
 
 	oppo_dimlayer_hbm = value;
-
+	
+        pr_err("debug for oppo_display_set_dimlayer_hbm get_oppo_display_power_status = %d\n",
+		get_oppo_display_power_status());
 #ifdef VENDOR_EDIT
 	/* Hu Jie@PSW.MM.Display.Lcd.Stability, 2019-09-27, add log at display key evevnt */
 	pr_err("debug for oppo_display_set_dimlayer_hbm set oppo_dimlayer_hbm = %d\n",
@@ -2635,6 +2656,7 @@ int dsi_display_oppo_set_power(struct drm_connector *connector,
 			break;
 		}
 		set_oppo_display_power_status(OPPO_DISPLAY_POWER_DOZE_SUSPEND);
+		oppo_dimlayer_hbm = 0;
 		break;
 	case SDE_MODE_DPMS_ON:
 		blank = MSM_DRM_BLANK_UNBLANK;
@@ -3335,6 +3357,8 @@ static struct kobject *oppo_display_kobj;
 
 OPPO_DISPLAY_ATTR(hbm, S_IRUGO | S_IWUSR, oppo_display_get_hbm,
 	oppo_display_set_hbm);
+OPPO_DISPLAY_ATTR(skip_pcc_override, S_IRUGO | S_IWUSR,
+	oppo_display_get_skip_pcc_override, oppo_display_set_skip_pcc_override);
 OPPO_DISPLAY_ATTR(audio_ready, S_IRUGO | S_IWUSR, NULL,
 	oppo_display_set_audio_ready);
 OPPO_DISPLAY_ATTR(seed, S_IRUGO | S_IWUSR, oppo_display_get_seed,
@@ -3411,6 +3435,7 @@ OPPO_DISPLAY_ATTR(LCM_CABC, S_IRUGO|S_IWUSR, oplus_display_get_cabc, oplus_displ
  */
 static struct attribute *oppo_display_attrs[] = {
 	&dev_attr_hbm.attr,
+	&dev_attr_skip_pcc_override.attr,
 	&dev_attr_audio_ready.attr,
 	&dev_attr_seed.attr,
 	&dev_attr_panel_serial_number.attr,
